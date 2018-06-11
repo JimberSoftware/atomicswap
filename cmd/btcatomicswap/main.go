@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
@@ -550,14 +549,10 @@ func getRawChangeAddress(c *rpc.Client) (btcutil.Address, error) {
 }
 
 func promptPublishTx(c *rpc.Client, tx *wire.MsgTx, name string) error {
-	reader := bufio.NewReader(os.Stdin)
+
 	for {
-		fmt.Printf("Publish %s transaction? [y/N] ", name)
-		answer, err := reader.ReadString('\n')
-		if err != nil {
-			return err
-		}
-		answer = strings.TrimSpace(strings.ToLower(answer))
+
+		answer := "yes"
 
 		switch answer {
 		case "y", "yes":
@@ -782,15 +777,16 @@ func (cmd *initiateCmd) runCommand(c *rpc.Client) error {
 	refundTxHash := b.refundTx.TxHash()
 	contractFeePerKb := calcFeePerKb(b.contractFee, b.contractTx.SerializeSize())
 	refundFeePerKb := calcFeePerKb(b.refundFee, b.refundTx.SerializeSize())
-	if(len(os.Getenv("ATOMIC_JSON")) > 0){
+	if len(os.Getenv("ATOMIC_JSON")) > 0 {
 		fmt.Printf("{")
 		fmt.Printf("\"secret\" : \"%x\", ", secret)
-		fmt.Printf("\"hash\" : \"%x\", ", secretHash)
+		fmt.Printf("\"hashedSecret\" : \"%x\", ", secretHash)
 		fmt.Printf("\"contractfee\" : \"%v\", ", b.contractFee)
 		fmt.Printf("\"refundfee\" : \"%v\", ", b.refundFee)
-		fmt.Printf("\"contract\" : \"%v\", ", b.refundFee )
-	
-	}else{
+		fmt.Printf("\"contract\" : \"%v\", ", b.contract)
+		fmt.Printf("\"redeemAddr\" : \"%v\", ", b.contractP2SH)
+
+	} else {
 		fmt.Printf("Secret:      %x\n", secret)
 		fmt.Printf("Secret hash: %x\n\n", secretHash)
 		fmt.Printf("Contract fee: %v (%0.8f BTC/kB)\n", b.contractFee, contractFeePerKb)
@@ -803,20 +799,21 @@ func (cmd *initiateCmd) runCommand(c *rpc.Client) error {
 	contractBuf.Grow(b.contractTx.SerializeSize())
 	b.contractTx.Serialize(&contractBuf)
 
-	if(len(os.Getenv("ATOMIC_JSON")) == 0){
+	if len(os.Getenv("ATOMIC_JSON")) == 0 {
 		fmt.Printf("Contract transaction (%v):\n", b.contractTxHash)
 		fmt.Printf("%x\n\n", contractBuf.Bytes())
 	}
 	var refundBuf bytes.Buffer
 	refundBuf.Grow(b.refundTx.SerializeSize())
 	b.refundTx.Serialize(&refundBuf)
-	if(len(os.Getenv("ATOMIC_JSON")) == 0){
+	if len(os.Getenv("ATOMIC_JSON")) == 0 {
 		fmt.Printf("Refund transaction (%v):\n", &refundTxHash)
 		fmt.Printf("%x\n\n", refundBuf.Bytes())
 	}
 
-	if(len(os.Getenv("ATOMIC_JSON")) > 0){
-		fmt.Printf("\"contractTransaction\" : \"%v\", ", b.contractTxHash)
+	if len(os.Getenv("ATOMIC_JSON")) > 0 {
+		fmt.Printf("\"contractTransaction\" : \"%v\", ", contractBuf.Bytes())
+		fmt.Printf("\"contractTransactionHash\" : \"%v\", ", b.contractTxHash)
 		fmt.Printf("\"refundTransaction\" : \"%v\", ", &refundTxHash)
 		fmt.Printf("}")
 	}
@@ -841,7 +838,7 @@ func (cmd *participateCmd) runCommand(c *rpc.Client) error {
 	refundTxHash := b.refundTx.TxHash()
 	contractFeePerKb := calcFeePerKb(b.contractFee, b.contractTx.SerializeSize())
 	refundFeePerKb := calcFeePerKb(b.refundFee, b.refundTx.SerializeSize())
-	if(len(os.Getenv("ATOMIC_JSON")) == 0){
+	if len(os.Getenv("ATOMIC_JSON")) == 0 {
 		fmt.Printf("Contract fee: %v (%0.8f BTC/kB)\n", b.contractFee, contractFeePerKb)
 		fmt.Printf("Refund fee:   %v (%0.8f BTC/kB)\n\n", b.refundFee, refundFeePerKb)
 		fmt.Printf("Contract (%v):\n", b.contractP2SH)
@@ -852,7 +849,7 @@ func (cmd *participateCmd) runCommand(c *rpc.Client) error {
 	contractBuf.Grow(b.contractTx.SerializeSize())
 	b.contractTx.Serialize(&contractBuf)
 
-	if(len(os.Getenv("ATOMIC_JSON")) == 0){
+	if len(os.Getenv("ATOMIC_JSON")) == 0 {
 		fmt.Printf("Contract transaction (%v):\n", b.contractTxHash)
 		fmt.Printf("%x\n\n", contractBuf.Bytes())
 	}
@@ -861,12 +858,12 @@ func (cmd *participateCmd) runCommand(c *rpc.Client) error {
 	refundBuf.Grow(b.refundTx.SerializeSize())
 	b.refundTx.Serialize(&refundBuf)
 
-	if(len(os.Getenv("ATOMIC_JSON")) == 0){
+	if len(os.Getenv("ATOMIC_JSON")) == 0 {
 		fmt.Printf("Refund transaction (%v):\n", &refundTxHash)
 		fmt.Printf("%x\n\n", refundBuf.Bytes())
 	}
 
-	if(len(os.Getenv("ATOMIC_JSON")) > 0){
+	if len(os.Getenv("ATOMIC_JSON")) > 0 {
 		fmt.Printf("{")
 
 		fmt.Printf("\"contract\" : \"%v\", ", b.contractP2SH)
@@ -874,7 +871,7 @@ func (cmd *participateCmd) runCommand(c *rpc.Client) error {
 		fmt.Printf("\" refundFee\" : \"%v\", ", b.refundFee)
 		fmt.Printf("\" contractTransaction\" : \"%v\", ", b.contractTxHash)
 		fmt.Printf("}")
-		
+
 	}
 	return promptPublishTx(c, b.contractTx, "contract")
 }
@@ -954,13 +951,13 @@ func (cmd *redeemCmd) runCommand(c *rpc.Client) error {
 	buf.Grow(redeemTx.SerializeSize())
 	redeemTx.Serialize(&buf)
 
-	if(len(os.Getenv("ATOMIC_JSON")) > 0){
+	if len(os.Getenv("ATOMIC_JSON")) > 0 {
 		fmt.Printf("{")
 		fmt.Printf("\"redeemFee\" : \"%v\", ", fee)
-		fmt.Printf("\"redeemTransaction\" : \"%v\", ", &redeemTxHash )
+		fmt.Printf("\"redeemTransaction\" : \"%v\", ", &redeemTxHash)
 		fmt.Printf("}")
 
-	}else{
+	} else {
 		fmt.Printf("Redeem fee: %v (%0.8f BTC/kB)\n\n", fee, redeemFeePerKb)
 		fmt.Printf("Redeem transaction (%v):\n", &redeemTxHash)
 		fmt.Printf("%x\n\n", buf.Bytes())
@@ -1006,13 +1003,13 @@ func (cmd *refundCmd) runCommand(c *rpc.Client) error {
 	refundTx.Serialize(&buf)
 
 	refundFeePerKb := calcFeePerKb(refundFee, refundTx.SerializeSize())
-	if(len(os.Getenv("ATOMIC_JSON")) > 0){
+	if len(os.Getenv("ATOMIC_JSON")) > 0 {
 		fmt.Printf("{")
 		fmt.Printf("\"refundFee\" : \"%v\", ", refundFee)
-		fmt.Printf("\"refundTransaction\" : \"%v\", ", &refundTxHash )
+		fmt.Printf("\"refundTransaction\" : \"%v\", ", &refundTxHash)
 		fmt.Printf("}")
 
-	}else{
+	} else {
 		fmt.Printf("Refund fee: %v (%0.8f BTC/kB)\n\n", refundFee, refundFeePerKb)
 		fmt.Printf("Refund transaction (%v):\n", &refundTxHash)
 		fmt.Printf("%x\n\n", buf.Bytes())
@@ -1092,8 +1089,7 @@ func (cmd *auditContractCmd) runOfflineCommand() error {
 		return err
 	}
 
-
-	if(len(os.Getenv("ATOMIC_JSON")) > 0){
+	if len(os.Getenv("ATOMIC_JSON")) > 0 {
 		fmt.Printf("{")
 		fmt.Printf("\"contractAddress\" : \"%v\", ", contractAddr)
 		fmt.Printf("\"contractValue\" : \"%v\", ", btcutil.Amount(cmd.contractTx.TxOut[contractOut].Value))
@@ -1115,7 +1111,7 @@ func (cmd *auditContractCmd) runOfflineCommand() error {
 		}
 
 		fmt.Printf("}")
-	}else{
+	} else {
 
 		fmt.Printf("Contract address:        %v\n", contractAddr)
 		fmt.Printf("Contract value:          %v\n", btcutil.Amount(cmd.contractTx.TxOut[contractOut].Value))
