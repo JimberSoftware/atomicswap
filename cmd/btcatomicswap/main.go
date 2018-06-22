@@ -550,26 +550,15 @@ func getRawChangeAddress(c *rpc.Client) (btcutil.Address, error) {
 
 func promptPublishTx(c *rpc.Client, tx *wire.MsgTx, name string) error {
 
-	for {
-
-		answer := "yes"
-
-		switch answer {
-		case "y", "yes":
-		case "n", "no", "":
-			return nil
-		default:
-			fmt.Println("please answer y or n")
-			continue
-		}
-
-		txHash, err := c.SendRawTransaction(tx, false)
-		if err != nil {
-			return fmt.Errorf("sendrawtransaction: %v", err)
-		}
-		fmt.Printf("Published %s transaction (%v)\n", name, txHash)
-		return nil
+	txHash, err := c.SendRawTransaction(tx, false)
+	if err != nil {
+		return fmt.Errorf("sendrawtransaction: %v", err)
 	}
+	if len(os.Getenv("ATOMIC_JSON")) == 0 {
+		fmt.Printf("Published %s transaction (%v)\n", name, txHash)
+	}
+	return nil
+
 }
 
 // contractArgs specifies the common parameters used to create the initiator's
@@ -777,15 +766,15 @@ func (cmd *initiateCmd) runCommand(c *rpc.Client) error {
 	refundTxHash := b.refundTx.TxHash()
 	contractFeePerKb := calcFeePerKb(b.contractFee, b.contractTx.SerializeSize())
 	refundFeePerKb := calcFeePerKb(b.refundFee, b.refundTx.SerializeSize())
+
 	if len(os.Getenv("ATOMIC_JSON")) > 0 {
 		fmt.Printf("{")
 		fmt.Printf("\"secret\" : \"%x\", ", secret)
 		fmt.Printf("\"hashedSecret\" : \"%x\", ", secretHash)
-		fmt.Printf("\"contractfee\" : \"%v\", ", b.contractFee)
-		fmt.Printf("\"refundfee\" : \"%v\", ", b.refundFee)
-		fmt.Printf("\"contract\" : \"%v\", ", b.contract)
+		fmt.Printf("\"contractFee\" : \"%v\", ", b.contractFee)
+		fmt.Printf("\"refundFee\" : \"%v\", ", b.refundFee)
+		fmt.Printf("\"contractHex\" : \"%x\", ", b.contract)
 		fmt.Printf("\"redeemAddr\" : \"%v\", ", b.contractP2SH)
-
 	} else {
 		fmt.Printf("Secret:      %x\n", secret)
 		fmt.Printf("Secret hash: %x\n\n", secretHash)
@@ -803,6 +792,7 @@ func (cmd *initiateCmd) runCommand(c *rpc.Client) error {
 		fmt.Printf("Contract transaction (%v):\n", b.contractTxHash)
 		fmt.Printf("%x\n\n", contractBuf.Bytes())
 	}
+
 	var refundBuf bytes.Buffer
 	refundBuf.Grow(b.refundTx.SerializeSize())
 	b.refundTx.Serialize(&refundBuf)
@@ -812,11 +802,11 @@ func (cmd *initiateCmd) runCommand(c *rpc.Client) error {
 	}
 
 	if len(os.Getenv("ATOMIC_JSON")) > 0 {
-		fmt.Printf("\"contractTransaction\" : \"%v\", ", contractBuf.Bytes())
-		fmt.Printf("\"contractTransactionHash\" : \"%v\", ", b.contractTxHash)
-		fmt.Printf("\"refundTransaction\" : \"%v\", ", &refundTxHash)
+		fmt.Printf("\"transactionHex\" : \"%x\", ", contractBuf.Bytes())
+		fmt.Printf("\"transactionId\" : \"%v\" ", b.contractTxHash)
 		fmt.Printf("}")
 	}
+
 	return promptPublishTx(c, b.contractTx, "contract")
 }
 
