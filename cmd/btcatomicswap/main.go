@@ -1085,16 +1085,16 @@ func (cmd *auditContractCmd) runOfflineCommand() error {
 		fmt.Printf("\"contractValue\" : \"%v\", ", btcutil.Amount(cmd.contractTx.TxOut[contractOut].Value))
 		fmt.Printf("\"recipientAddress\" : \"%v\", ", recipientAddr)
 		fmt.Printf("\"refundAddress\" : \"%v\", ", refundAddr)
-		fmt.Printf("\"secretHash\" : \"%v\", ", pushes.SecretHash[:])
+		fmt.Printf("\"secretHash\" : \"%x\", ", pushes.SecretHash[:])
 
 		if pushes.LockTime >= int64(txscript.LockTimeThreshold) {
 			t := time.Unix(pushes.LockTime, 0)
-			fmt.Printf("Locktime: %v\n", t.UTC())
+			fmt.Printf("\"locktime\" : \"%v\", ", t.UTC())
 			reachedAt := time.Until(t).Truncate(time.Second)
 			if reachedAt > 0 {
-				fmt.Printf("Locktime reached in %v\n", reachedAt)
+				fmt.Printf("\"locktimeReached\" : \"%v\"", reachedAt)
 			} else {
-				fmt.Printf("Contract refund time lock has expired\n")
+				fmt.Printf("\"locktimeReached\" : \"%v\"", reachedAt)
 			}
 		} else {
 			fmt.Printf("Locktime: block %v\n", pushes.LockTime)
