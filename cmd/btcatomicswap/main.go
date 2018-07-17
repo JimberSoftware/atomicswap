@@ -515,7 +515,7 @@ func getFeePerKb(c *rpc.Client) (useFee, relayFee btcutil.Amount, err error) {
 		return useFee, relayFee, err
 	}
 
-	fmt.Println("warning: falling back to mempool relay fee policy")
+	//fmt.Println("warning: falling back to mempool relay fee policy")
 	return relayFee, relayFee, nil
 }
 
